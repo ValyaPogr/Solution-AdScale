@@ -1,0 +1,285 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title C4 Container Diagram — AdScale TO-BE (через 1 год)
+
+'==================== ACTORS ====================
+
+Person(advertiser,"Рекламодатель","Управляет кампаниями")
+Person_Ext(user,"Пользователь сайта","Просматривает рекламу")
+System_Ext(dsp,"DSP Partners","OpenRTB")
+System_Ext(payment,"Payment Gateway","Платёжная система")
+
+'==================== PLATFORM ====================
+
+System_Boundary(adscale,"AdScale Platform") {
+
+Container(lb,"Load Balancer","NGINX","Балансировка входящего трафика")
+
+Container(api,"API Gateway","Envoy / NGINX","Routing, JWT, Rate Limiting")
+
+Container(dspgw,"DSP Gateway","Go","OpenRTB Adapter")
+
+Container(auction,"Auction Service","C++","RTB Auction")
+
+Container(campaign,"Campaign Service","Go","Campaign Management")
+
+Container(delivery,"Delivery Service","Go","Banner Delivery")
+
+Container(statistics,"Statistics Service","Go","Impression & Click Processing")
+
+Container(finance,"Financial Service","Go","Billing & Budget")
+
+Container(analytics,"Analytics Service","Python","Reports & BI")
+
+Container(portal,"Advertiser Portal","Node.js","Dashboard")
+
+Container(redis,"Redis Cluster","Redis","Distributed Cache")
+
+ContainerQueue(kafka,"Kafka","Event Streaming")
+
+Container(platform,"Kubernetes","Container Platform")
+
+Container(monitoring,"Prometheus + Grafana","Monitoring")
+
+Container(tracing,"Jaeger / OpenTelemetry","Distributed Tracing")
+
+Container(logging,"ELK / OpenSearch","Central Logging")
+
+'==================== DATABASES ====================
+
+ContainerDb(auctionDb,"Auction DB","PostgreSQL")
+
+ContainerDb(campaignDb,"Campaign DB","PostgreSQL")
+
+ContainerDb(financeDb,"Finance DB","PostgreSQL")
+
+ContainerDb(portalDb,"Portal DB","PostgreSQL")
+
+ContainerDb(dspDb,"DSP Config DB","PostgreSQL")
+
+ContainerDb(statDb,"Statistics DB","ClickHouse")
+
+ContainerDb(reportDb,"Analytics DW","ClickHouse")
+
+}
+
+'==================== EXTERNAL ====================
+
+Rel(dsp,lb,"OpenRTB")
+Rel(lb,api,"HTTPS")
+
+Rel(user,delivery,"HTTPS")
+
+Rel(advertiser,portal,"HTTPS")
+
+Rel(finance,payment,"REST")
+
+'==================== HOT PATH ====================
+
+Rel(api,dspgw,"REST")
+
+Rel(dspgw,auction,"gRPC")
+
+Rel(auction,redis,"Read Cache")
+
+Rel(auction,campaign,"Campaign Lookup")
+
+Rel(campaign,campaignDb,"CRUD")
+
+Rel(auction,auctionDb,"Rules / Config")
+
+Rel(auction,delivery,"Winner Ad")
+
+'==================== EVENTS ====================
+
+Rel(delivery,kafka,"Publish Impression / Click")
+
+Rel(kafka,statistics,"Consume")
+
+Rel(statistics,statDb,"Write")
+
+Rel(statistics,kafka,"Publish Statistics")
+
+Rel(kafka,analytics,"Consume")
+
+Rel(analytics,reportDb,"Generate Reports")
+
+'==================== ADVERTISER ====================
+
+Rel(portal,portalDb,"Users / Settings")
+
+Rel(portal,campaign,"REST")
+
+Rel(portal,finance,"REST")
+
+Rel(finance,financeDb,"Transactions")
+
+'==================== DSP ====================
+
+Rel(dspgw,dspDb,"Partner Config")
+
+'==================== OBSERVABILITY ====================
+
+Rel(auction,monitoring,"Metrics")
+
+Rel(campaign,monitoring,"Metrics")
+
+Rel(statistics,monitoring,"Metrics")
+
+Rel(finance,monitoring,"Metrics")
+
+Rel(auction,logging,"Logs")
+
+Rel(statistics,logging,"Logs")
+
+Rel(finance,logging,"Logs")
+
+Rel(api,tracing,"Trace")
+
+Rel(auction,tracing,"Trace")
+
+Rel(delivery,tracing,"Trace")
+
+'==================== DEPLOY ====================
+
+Rel(platform,api,"Deploy")
+
+Rel(platform,dspgw,"Deploy")
+
+Rel(platform,auction,"Deploy")
+
+Rel(platform,campaign,"Deploy")
+
+Rel(platform,delivery,"Deploy")
+
+Rel(platform,statistics,"Deploy")
+
+Rel(platform,finance,"Deploy")
+
+Rel(platform,analytics,"Deploy")
+
+Rel(platform,portal,"Deploy")
+
+'==================== NOTES ====================
+
+note right of auction
+<b>Hot Path (RTB)</b>
+
+DSP
+→ Load Balancer
+→ API Gateway
+→ DSP Gateway
+→ Auction Service
+→ Delivery Service
+
+Цели:
+• P95 ≤ 100 ms
+• минимальное число синхронных вызовов
+• независимое горизонтальное масштабирование
+end note
+
+
+note left of redis
+
+<b>Redis Cluster</b>
+Кэширует:
+• кампании
+• ставки
+• таргетинг
+
+Не является источником истины.
+Снижает нагрузку на PostgreSQL.
+end note
+
+
+note bottom of kafka
+<b>Event-Driven Architecture</b>
+Kafka используется для:
+• Impression
+• Click
+• Statistics
+
+Позволяет исключить запись статистики из Hot Path.
+end note
+
+
+note bottom of campaignDb
+
+<b>Database per Service</b>
+Каждый сервис владеет собственной БД.
+Исключается Shared Database.
+Устраняется Single Point of Failure.
+end note
+
+
+note right of monitoring
+
+<b>Observability</b>
+Prometheus
+Grafana
+Jaeger
+ELK
+Обеспечивают:
+• мониторинг
+• логирование
+• распределённый
+трейсинг
+end note
+
+
+note right of analytics
+
+<b>Analytics Service</b>
+Полностью отделён от OLTP.
+Получает события через Kafka.
+Не влияет на RTB-аукцион.
+end note
+
+
+note top of auction
+
+<b>Auction Service</b>
+Первый выделенный микросервис.
+Самый нагруженный компонент системы.
+Масштабируется независимо.
+end note
+
+
+'==================== LEGEND ====================
+
+note top of adscale
+<b>Архитектурные принципы</b>
+---
+
+**Архитектурный стиль**
+• Strangler Fig Pattern
+• Постепенная декомпозиция монолита
+• Микросервисная архитектура
+
+**Инфраструктура**
+API Gateway — единая точка входа
+Load Balancer — балансировка
+Redis — распределённый кэш
+Kafka — асинхронный обмен
+Kubernetes — оркестрация
+
+**Хранилища**
+PostgreSQL — OLTP
+ClickHouse — аналитика
+
+**Взаимодействие**
+REST / gRPC — синхронные вызовы
+Kafka — асинхронные события
+
+**Основные принципы**
+✔ Database per Service
+✔ Event-Driven
+✔ Horizontal Scaling
+✔ High Availability
+✔ Observability
+endnote
+
+@enduml
