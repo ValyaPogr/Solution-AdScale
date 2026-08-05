@@ -2,42 +2,7 @@
 
 Архитектурный проект, выполненный в рамках курса **«Архитектор решений»**.
 
-Проект посвящён проектированию высоконагруженной рекламной платформы (AdTech) и последовательно охватывает путь от анализа предметной области до построения масштабируемой отказоустойчивой архитектуры.
-
----
-
-# Структура репозитория
-
-```text
-Solution-AdScale/
-│
-├── README.md
-│
-├── Task1/
-│   ├── README.md
-│   ├── architecture.md
-│   ├── domain-model.md
-│   ├── quality-attributes.md
-│   ├── constraints.md
-│   └── diagrams/
-│
-├── Task2/
-│   ├── README.md
-│   ├── bidding-service.md
-│   ├── interaction.md
-│   ├── api-gateway.md
-│   ├── reliability.md
-│   └── diagrams/
-│
-└── Task3/
-    ├── README.md
-    ├── database-strategy.md
-    ├── scaling.md
-    ├── caching.md
-    ├── event-streaming.md
-    ├── failover.md
-    └── diagrams/
-```
+Проект посвящён проектированию высоконагруженной рекламной платформы (AdScale) и последовательно охватывает путь от анализа предметной области до построения масштабируемой отказоустойчивой архитектуры.
 
 ---
 
