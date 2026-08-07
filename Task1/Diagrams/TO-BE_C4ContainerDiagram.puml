@@ -50,7 +50,7 @@ Container(logging,"ELK / OpenSearch","Central Logging")
 
 '==================== DATABASES ====================
 
-ContainerDb(auctionDb,"Auction DB","PostgreSQL")
+ContainerDb(biddingDb,"<color:lime>Bidding Metadata DB</color>","PostgreSQL")
 
 ContainerDb(campaignDb,"Campaign DB","PostgreSQL")
 
@@ -89,7 +89,7 @@ Rel(auction,campaign,"Campaign Lookup")
 
 Rel(campaign,campaignDb,"CRUD")
 
-Rel(auction,auctionDb,"Rules / Config")
+Rel(auction,biddingDb,"Rules / Config")
 
 Rel(auction,delivery,"Winner Ad")
 
