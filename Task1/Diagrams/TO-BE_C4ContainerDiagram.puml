@@ -22,7 +22,7 @@ Container(api,"API Gateway","Envoy / NGINX","Routing, JWT, Rate Limiting")
 
 Container(dspgw,"DSP Gateway","Go","OpenRTB Adapter")
 
-Container(auction,"Auction Service","C++","RTB Auction")
+Container(auction,"<color:lime>Bidding Service</color>","C++","RTB Auction")
 
 Container(campaign,"Campaign Service","Go","Campaign Management")
 
@@ -172,7 +172,7 @@ DSP
 → Load Balancer
 → API Gateway
 → DSP Gateway
-→ Auction Service
+→ Bidding Service
 → Delivery Service
 
 Цели:
@@ -241,7 +241,7 @@ end note
 
 note top of auction
 
-<b>Auction Service</b>
+<b>Bidding Service</b>
 Первый выделенный микросервис.
 Самый нагруженный компонент системы.
 Масштабируется независимо.
@@ -274,12 +274,12 @@ ClickHouse — аналитика
 REST / gRPC — синхронные вызовы
 Kafka — асинхронные события
 
-**Основные принципы**
-✔ Database per Service
-✔ Event-Driven
-✔ Horizontal Scaling
-✔ High Availability
-✔ Observability
+***Основные принципы***
+<color:green>✔ Database per Service<color>
+<color:green>✔ Event-Driven<color>
+<color:green>✔ Horizontal Scaling<color>
+<color:green>✔ High Availability<color>
+<color:green>✔ Observability<color>
 endnote
 
 @enduml
