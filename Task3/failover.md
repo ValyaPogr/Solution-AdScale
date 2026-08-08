@@ -1,5 +1,3 @@
-# failover
-
 # Data Failover Strategy
 
 ## Назначение документа
