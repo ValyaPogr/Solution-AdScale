@@ -1,0 +1,170 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+LAYOUT_LEFT_RIGHT()
+
+title C4 Container Diagram — AdScale TO-BE (через 3 месяца)
+
+'==================== ACTORS ====================
+
+Person(advertiser,"Рекламодатель","Управляет кампаниями")
+Person_Ext(user,"Пользователь сайта","Просматривает рекламу")
+System_Ext(dsp,"DSP Partners","OpenRTB")
+System_Ext(payment,"Payment Gateway","Платёжная система")
+
+'==================== PLATFORM ====================
+
+System_Boundary(adscale,"AdScale Platform") {
+
+Container(lb,"Load Balancer","NGINX","Балансировка входящего трафика")
+Container(api,"API Gateway","NGINX / Envoy","Routing, JWT, Rate Limiting")
+Container(dspgw,"DSP Gateway","Go","OpenRTB Adapter")
+Container(bidding,"<color:lime>Bidding Service</color>","C++","RTB Auction")
+Container(redis,"Redis Cluster","Redis","Distributed Cache")
+ContainerQueue(kafka,"Kafka","Event Streaming")
+Container(statistics,"Statistics Service","Go","Async Impression & Click Processing")
+Container(monolith,"AdScale Monolith","C++ / Go / Python / Node.js","Campaign, Delivery, Finance, Analytics, Advertiser Portal")
+ContainerDb(postgres,"PostgreSQL","Shared Database")
+
+}
+
+'==================== EXTERNAL ====================
+
+Rel(dsp,lb,"OpenRTB")
+Rel(lb,api,"HTTPS")
+Rel(user,monolith,"HTTPS")
+Rel(advertiser,monolith,"HTTPS")
+Rel(monolith,payment,"REST")
+
+'==================== HOT PATH ====================
+
+Rel(api,dspgw,"REST")
+Rel(dspgw,bidding,"gRPC")
+Rel(bidding,redis,"Read Cache")
+Rel(bidding,monolith,"Campaign Lookup")
+Rel(monolith,postgres,"CRUD")
+Rel(bidding,dsp,"Bid Response")
+
+'==================== EVENTS ====================
+
+Rel(monolith,kafka,"Publish Impression / Click")
+Rel(kafka,statistics,"Consume Events")
+Rel(statistics,postgres,"Async Write")
+
+'==================== NOTES ====================
+
+note right of bidding
+
+<b>Hot Path (RTB)</b>
+
+DSP
+↓
+Load Balancer
+↓
+API Gateway
+↓
+DSP Gateway
+↓
+Bidding Service
+↓
+DSP
+
+Цели:
+• P95 ≤ 100 ms
+• минимальное число синхронных вызовов
+• масштабирование критического пути
+end note
+
+
+note left of redis
+<b>Redis Cluster</b>
+
+Кэширует:
+• кампании
+• ставки
+• таргетинг
+
+Уменьшает нагрузку на PostgreSQL.
+end note
+
+
+note bottom of kafka
+<b>Event-Driven</b>
+
+Статистика исключена из Hot Path.
+Kafka используется для передачи Impression и Click событий.
+end note
+
+
+note bottom of postgres
+<b>Переходный этап</b>
+
+Общая PostgreSQL сохраняется.
+Database per Service будет реализован на следующем этапе миграции.
+end note
+
+
+note right of monolith
+<b>Strangler Fig Pattern</b>
+
+Монолит продолжает работать.
+Новые сервисы постепенно выделяются наружу.
+
+Выделены:
+• DSP Gateway
+• Bidding Service
+• Statistics Service
+end note
+
+
+note top of adscale
+
+<b>Ключевые архитектурные решения</b>
+
+Strangler Fig Pattern
+Частичная декомпозиция
+API Gateway
+Redis Cache
+Kafka
+
+Первый выделенный сервис — Bidding Service
+
+Общая PostgreSQL пока сохраняется
+Без остановки бизнеса
+end note
+
+'==================== LEGEND ====================
+
+note left of adscale
+
+<b>Легенда</b>
+
+== Новые сервисы ==
+<color:lime>Bidding Service</color>
+DSP Gateway
+Statistics Service
+
+== Инфраструктура ==
+API Gateway
+Load Balancer
+Redis
+Kafka
+
+== Монолит ==
+Campaign
+Delivery
+Finance
+Analytics
+Advertiser Portal
+
+== Архитектурные принципы ==
+• Strangler Fig Pattern
+• Постепенная миграция
+• Event-Driven
+• Redis Cache
+• Минимальные изменения
+• Без остановки бизнеса
+
+endnote
+@enduml

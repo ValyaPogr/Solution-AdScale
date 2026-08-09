@@ -1,0 +1,86 @@
+@startuml
+title RTB Architecture Components
+
+skinparam componentStyle rectangle
+
+package "External" {
+
+component DSP
+
+}
+
+package "Gateway Layer" {
+
+component "API Gateway" as Gateway
+
+}
+
+package "RTB Services" {
+
+component "Bidding Service" as Bidding
+component "Campaign Service" as Campaign
+component "Budget Service" as Budget
+component "Targeting Service" as Targeting
+
+}
+
+package "Infrastructure" {
+
+database "Redis" as Redis
+queue Kafka
+
+}
+
+package "Consumers" {
+
+component Analytics
+component Reporting
+component Monitoring
+
+}
+
+DSP --> Gateway : HTTPS REST
+
+Gateway --> Bidding : gRPC
+
+Bidding --> Campaign : gRPC
+Bidding --> Budget : gRPC
+Bidding --> Targeting : gRPC
+
+Bidding --> Redis : Cache
+
+Campaign --> Kafka : CampaignUpdated
+
+Bidding --> Kafka : BidCreated
+
+Kafka --> Analytics
+Kafka --> Reporting
+Kafka --> Monitoring
+
+note right of Gateway
+
+Authentication
+
+Rate Limiting
+
+Circuit Breaker
+
+Monitoring
+
+Routing
+
+end note
+
+note bottom of Bidding
+
+Bid Calculation
+
+Bid Selection
+
+Fallback
+
+Retry
+
+end note
+
+@enduml

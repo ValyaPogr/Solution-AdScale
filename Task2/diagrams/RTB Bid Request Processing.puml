@@ -1,0 +1,49 @@
+@startuml
+title RTB Bid Request Processing
+
+actor DSP
+
+participant "API Gateway" as Gateway
+participant "Bidding Service" as Bidding
+participant "Campaign Service" as Campaign
+participant "Budget Service" as Budget
+participant "Targeting Service" as Targeting
+database "Redis Cache" as Redis
+queue Kafka
+
+DSP -> Gateway : POST /v1/bids
+
+Gateway -> Gateway : Authentication
+Gateway -> Gateway : Rate Limiting
+Gateway -> Gateway : Request Validation
+
+Gateway -> Bidding : Forward Bid Request (gRPC)
+
+Bidding -> Redis : Get cached campaigns
+
+alt Cache Miss
+
+    Bidding -> Campaign : Get Eligible Campaigns
+    Campaign --> Bidding : Campaign List
+
+else Cache Hit
+
+    Redis --> Bidding : Campaign List
+
+end
+
+Bidding -> Budget : Check Budget
+Budget --> Bidding : Budget Status
+
+Bidding -> Targeting : Check Targeting
+Targeting --> Bidding : Targeting Result
+
+Bidding -> Bidding : Calculate Bid
+
+Bidding --> Gateway : Bid Response
+
+Gateway --> DSP : HTTP Response
+
+Bidding -> Kafka : Publish BidCreated
+
+@enduml
